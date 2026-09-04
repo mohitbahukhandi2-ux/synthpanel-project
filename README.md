@@ -4,8 +4,6 @@ SynthPanel is a Streamlit prototype for AI-assisted synthetic customer interview
 
 It is a demonstration tool for financial-services market research, not a production decisioning system.
 
-![SynthPanel architecture](assets/pipeline_flowchart.png)
-
 ## Features
 
 - Persona-led interviews derived from clustering outputs.
