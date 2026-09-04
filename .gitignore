@@ -1,0 +1,20 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Streamlit and local exports
+.streamlit/secrets.toml
+synthpanel_session_*.json
+
+# Notebook checkpoints and OS files
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db

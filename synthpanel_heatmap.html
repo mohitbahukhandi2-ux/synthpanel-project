@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SynthPanel — Persona × Product Heatmap</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d47;
+    --text: #e8edf5;
+    --text-muted: #6b7fa3;
+    --accent: #3d7fff;
+    --accent2: #00d4aa;
+    --green: #00c47a;
+    --green-bg: rgba(0,196,122,0.12);
+    --amber: #f5a623;
+    --amber-bg: rgba(245,166,35,0.12);
+    --red: #ff4d6a;
+    --red-bg: rgba(255,77,106,0.12);
+    --cell-w: 110px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 0%, rgba(61,127,255,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(0,212,170,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 28px 40px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .logo-area { display: flex; align-items: baseline; gap: 12px; }
+
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .tagline {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 300;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .header-badges { display: flex; gap: 8px; align-items: center; }
+
+  .badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.3px;
+  }
+  .badge-blue { background: rgba(61,127,255,0.15); color: var(--accent); border: 1px solid rgba(61,127,255,0.3); }
+  .badge-green { background: rgba(0,196,122,0.12); color: var(--green); border: 1px solid rgba(0,196,122,0.25); }
+
+  /* ── Layout ── */
+  .app { display: flex; height: calc(100vh - 73px); }
+
+  /* ── Left panel ── */
+  .sidebar {
+    width: 260px;
+    min-width: 260px;
+    border-right: 1px solid var(--border);
+    padding: 24px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .sidebar-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .legend-dot {
+    width: 28px; height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .filter-group { display: flex; flex-direction: column; gap: 6px; }
+
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    background: rgba(61,127,255,0.1);
+    border-color: rgba(61,127,255,0.4);
+    color: var(--accent);
+  }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .stat-val { font-size: 22px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; }
+  .stat-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+  /* ── Main ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .main-header {
+    padding: 20px 32px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .main-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--text);
+    font-weight: 400;
+  }
+
+  .main-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+  .view-tabs { display: flex; gap: 4px; }
+  .view-tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .view-tab.active {
+    background: rgba(61,127,255,0.15);
+    border-color: rgba(61,127,255,0.35);
+    color: var(--accent);
+  }
+  .view-tab:hover:not(.active) { background: var(--surface); color: var(--text); }
+
+  /* ── Table wrapper ── */
+  .table-wrap {
+    flex: 1;
+    overflow: auto;
+    padding: 24px 32px;
+  }
+
+  .heatmap-table { border-collapse: separate; border-spacing: 4px; }
+
+  /* Corner cell */
+  .corner-cell {
+    width: 190px; min-width: 190px;
+    padding: 8px 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    vertical-align: bottom;
+  }
+
+  /* Product header */
+  .product-header {
+    padding: 10px 8px 14px;
+    text-align: center;
+    min-width: var(--cell-w);
+    width: var(--cell-w);
+    vertical-align: bottom;
+  }
+
+  .product-icon {
+    font-size: 18px;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .product-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    display: block;
+    line-height: 1.3;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  /* Persona row header */
+  .persona-header {
+    padding: 6px 14px 6px 4px;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  .persona-tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .tag-low { background: rgba(255,77,106,0.15); color: var(--red); }
+  .tag-high { background: rgba(0,196,122,0.15); color: var(--green); }
+
+  .persona-name {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .persona-desc {
+    display: block;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  /* ── Score cell ── */
+  .score-cell {
+    width: var(--cell-w);
+    min-width: var(--cell-w);
+    height: 52px;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.12s, box-shadow 0.12s;
+    vertical-align: middle;
+  }
+
+  .score-cell:hover { transform: scale(1.07); z-index: 10; }
+
+  .score-cell.green  { background: var(--green-bg); border: 1px solid rgba(0,196,122,0.3); }
+  .score-cell.amber  { background: var(--amber-bg); border: 1px solid rgba(245,166,35,0.3); }
+  .score-cell.red    { background: var(--red-bg);   border: 1px solid rgba(255,77,106,0.3); }
+  .score-cell.selected { box-shadow: 0 0 0 2px white; transform: scale(1.07); z-index: 10; }
+
+  .cell-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 2px;
+  }
+
+  .cell-score {
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1;
+  }
+  .green .cell-score  { color: var(--green); }
+  .amber .cell-score  { color: var(--amber); }
+  .red   .cell-score  { color: var(--red); }
+
+  .cell-bar {
+    width: 32px; height: 3px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.06);
+  }
+  .cell-bar-fill { height: 100%; border-radius: 2px; }
+  .green .cell-bar-fill { background: var(--green); }
+  .amber .cell-bar-fill { background: var(--amber); }
+  .red   .cell-bar-fill { background: var(--red); }
+
+  /* ── Detail panel ── */
+  .detail-panel {
+    width: 320px;
+    min-width: 320px;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transition: width 0.2s;
+  }
+
+  .detail-panel.empty {
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 32px;
+    gap: 12px;
+  }
+
+  .detail-hint-icon { font-size: 32px; opacity: 0.3; }
+
+  .detail-header {
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-persona-tag {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .detail-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 17px;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .detail-product {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .detail-score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 10px;
+  }
+  .score-badge-green { background: var(--green-bg); color: var(--green); border: 1px solid rgba(0,196,122,0.3); }
+  .score-badge-amber { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
+  .score-badge-red   { background: var(--red-bg);   color: var(--red);   border: 1px solid rgba(255,77,106,0.3); }
+
+  .detail-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
+
+  .detail-quote {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    font-style: italic;
+    margin-bottom: 18px;
+  }
+
+  .detail-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    margin-top: 14px;
+  }
+
+  .detail-pill-group { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .detail-pill {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .pill-pos { background: var(--green-bg); color: var(--green); }
+  .pill-neg { background: var(--red-bg); color: var(--red); }
+  .pill-neu { background: rgba(61,127,255,0.12); color: var(--accent); }
+
+  .confidence-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .conf-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .conf-green { background: var(--green); }
+  .conf-amber { background: var(--amber); }
+  .conf-red   { background: var(--red); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+  .detail-body > * { animation: fadeIn 0.18s ease both; }
+  .detail-body > *:nth-child(2) { animation-delay: 0.04s; }
+  .detail-body > *:nth-child(3) { animation-delay: 0.08s; }
+  .detail-body > *:nth-child(4) { animation-delay: 0.12s; }
+
+  @keyframes cellPulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+  .loading .cell-score { animation: cellPulse 1s infinite; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-area">
+    <div class="logo">Synth<span>Panel</span></div>
+    <div class="tagline">BNPP PF · Persona Intelligence</div>
+  </div>
+  <div class="header-badges">
+    <div class="badge badge-blue">10 Personas</div>
+    <div class="badge badge-green">● Live</div>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div>
+      <div class="sidebar-section-title">Score Legend</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green-bg);border:1px solid rgba(0,196,122,0.4)"></div>High fit (7–10)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--amber-bg);border:1px solid rgba(245,166,35,0.4)"></div>Medium fit (4–6)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red-bg);border:1px solid rgba(255,77,106,0.4)"></div>Low fit (1–3)</div>
+    </div>
+
+    <div>
+      <div class="sidebar-section-title">Filter by Segment</div>
+      <div class="filter-group">
+        <button class="filter-btn active" onclick="filterPersonas('all', this)">All personas</button>
+        <button class="filter-btn" onclick="filterPersonas('low', this)">Low NPS only</button>
+        <button class="filter-btn" onclick="filterPersonas('high', this)">High NPS only</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-section-title">Panel Stats</div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-val">10</div><div class="stat-lbl">Personas</div></div>
+        <div class="stat-box"><div class="stat-val">6</div><div class="stat-lbl">Products</div></div>
+        <div class="stat-box"><div class="stat-val" id="green-count">—</div><div class="stat-lbl">High fit</div></div>
+        <div class="stat-box"><div class="stat-val" id="red-count">—</div><div class="stat-lbl">Low fit</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-section-title">Confidence Key</div>
+      <div class="confidence-row"><div class="conf-dot conf-green"></div>Data-backed signal</div>
+      <div class="confidence-row"><div class="conf-dot conf-amber"></div>Model inference</div>
+      <div class="confidence-row"><div class="conf-dot conf-red"></div>Extrapolation</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="main-header">
+      <div>
+        <div class="main-title">Product × Persona Fit Matrix</div>
+        <div class="main-subtitle">Click any cell to see why this persona would or wouldn't take this product</div>
+      </div>
+      <div class="view-tabs">
+        <button class="view-tab active">Fit Score</button>
+        <button class="view-tab">NPS Impact</button>
+        <button class="view-tab">Risk Level</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="heatmap-table" id="heatmap">
+        <!-- Built by JS -->
+      </table>
+    </div>
+  </div>
+
+  <!-- Detail panel -->
+  <div class="detail-panel empty" id="detail-panel">
+    <div class="detail-hint-icon">↖</div>
+    <div>Click any cell to see<br/>the persona's response</div>
+  </div>
+
+</div>
+
+<script>
+const PRODUCTS = [
+  { id: 'personal', name: 'Personal\nLoan', icon: '💳' },
+  { id: 'revolving', name: 'Revolving\nCredit', icon: '🔄' },
+  { id: 'bnpl', name: 'Buy Now\nPay Later', icon: '🛍️' },
+  { id: 'car', name: 'Car\nLoan', icon: '🚗' },
+  { id: 'renovation', name: 'Home\nRenovation', icon: '🏠' },
+  { id: 'consolidation', name: 'Debt\nConsolid.', icon: '📊' },
+];
+
+const PERSONAS = [
+  { id: 'l0', tag: 'LOW 0', name: 'Urban Young Professional', desc: '28–35 · Single · Madrid', nps: 'low' },
+  { id: 'l1', tag: 'LOW 1', name: 'Middle-Aged Family Provider', desc: '50–61 · Married · Kids', nps: 'low' },
+  { id: 'l2', tag: 'LOW 2', name: 'Young Professional Saver', desc: '25–35 · Single · Family home', nps: 'low' },
+  { id: 'l3', tag: 'LOW 3', name: 'Independent Mature Professional', desc: '46–55 · Single/Married · No kids', nps: 'low' },
+  { id: 'l4', tag: 'LOW 4', name: 'Young Urban Family', desc: '30–40 · Couple · 1–2 kids', nps: 'low' },
+  { id: 'h0', tag: 'HIGH 0', name: 'Independent Urban Professional', desc: '50 · Single · No kids', nps: 'high' },
+  { id: 'h1', tag: 'HIGH 1', name: 'Family-Focused Middle-Ager', desc: '45 · Couple · Kids', nps: 'high' },
+  { id: 'h2', tag: 'HIGH 2', name: 'Independent Young Professional', desc: '25–30 · Single · No kids', nps: 'high' },
+];
+
+// Scores [persona][product]: {score, quote, pros, cons, confidence}
+const DATA = {
+  l0: {
+    personal:      { score:7, quote:"A fixed personal loan works for me — I know exactly what I owe each month. No surprises, and I manage everything on my banking app.", pros:["Fixed repayments","App-managed"], cons:["Tight budget","Savings priority"], conf:"green" },
+    revolving:     { score:4, quote:"Revolving credit scares me a bit. I might end up spending more than I planned. I'd only activate it for a real emergency.", pros:["Flexibility"], cons:["Risk of overspend","Anxiety"], conf:"amber" },
+    bnpl:          { score:8, quote:"BNPL is perfect for me — split a purchase into 3 instalments, no interest, and I can track it on my phone. I use it for tech gear mostly.", pros:["Zero interest","Digital","Instant"], cons:["Impulse risk"], conf:"green" },
+    car:           { score:3, quote:"I don't own a car — I use public transport and Uber. A car loan is just not on my radar right now.", pros:[], cons:["Not a driver","Urban lifestyle"], conf:"green" },
+    renovation:    { score:2, quote:"I rent my apartment. Renovation loans are for homeowners. Completely irrelevant to me at this stage of my life.", pros:[], cons:["Renter","Not applicable"], conf:"green" },
+    consolidation: { score:5, quote:"I don't have many debts yet, but if I ever accumulated a few, consolidating into one payment would appeal to me — simpler to manage.", pros:["Simplicity"], cons:["Not urgent yet"], conf:"amber" },
+  },
+  l1: {
+    personal:      { score:8, quote:"I've taken personal loans before — for the kids' school, a family car. When the need is clear and I can plan the repayments, I'm comfortable.", pros:["Trusted product","Family use case"], cons:["Many fixed costs"], conf:"green" },
+    revolving:     { score:5, quote:"Having a credit line as a buffer isn't a bad idea. But I'd need to be careful — with kids at home, I can't afford to slip on payments.", pros:["Buffer for emergencies"], cons:["Repayment discipline needed"], conf:"amber" },
+    bnpl:          { score:4, quote:"My wife uses it for online shopping but I'm not convinced it's for me. I prefer knowing what I owe in total upfront.", pros:["Convenient for family purchases"], cons:["Prefer transparency"], conf:"amber" },
+    car:           { score:9, quote:"A car loan is something I completely understand and would consider again. The family needs reliable transport and I've done this before.", pros:["Family need","Familiar product","Trusted process"], cons:[], conf:"green" },
+    renovation:    { score:7, quote:"We've been thinking about renovating the kitchen for two years. A renovation loan with fixed instalments over 36 months would finally make it possible.", pros:["Clear project","Homeowner"], cons:["Timing / budget"], conf:"green" },
+    consolidation: { score:6, quote:"With a mortgage, a car loan and a credit card, having everything in one payment is tempting. I just worry about the total cost.", pros:["Simplification"], cons:["Total cost concern"], conf:"amber" },
+  },
+  l2: {
+    personal:      { score:5, quote:"I'd take a personal loan but only as a last resort — like if I really needed to move out or fund something I couldn't wait for. Otherwise I prefer to save.", pros:["Available as backup"], cons:["Savings-first mindset","Commission-aware"], conf:"green" },
+    revolving:     { score:3, quote:"Revolving credit feels like a trap to me. I know people who got into trouble with it. I'd rather go without.", pros:[], cons:["Fear of debt spiral","Financially cautious"], conf:"green" },
+    bnpl:          { score:6, quote:"BNPL is okay for a specific purchase — I used it for a laptop once. But I always pay it off early to avoid any fees.", pros:["Specific use case","Tech purchases"], cons:["Avoids ongoing credit"], conf:"green" },
+    car:           { score:4, quote:"I don't need a car right now — I live with my parents and the metro is fine. Maybe in 3–4 years when I move out.", pros:["Future consideration"], cons:["Not current need"], conf:"amber" },
+    renovation:    { score:1, quote:"I live in my family home. Renovation loans are completely irrelevant to my situation.", pros:[], cons:["Lives with parents","Not applicable"], conf:"green" },
+    consolidation: { score:2, quote:"I barely have any debt to consolidate. This product is not for me at this life stage.", pros:[], cons:["Low debt level","Not relevant"], conf:"green" },
+  },
+  l3: {
+    personal:      { score:6, quote:"I've taken loans before but I like to discuss them face to face with someone I trust at the branch. Online loan applications feel impersonal to me.", pros:["Familiar product","Occasional cash needs"], cons:["Prefers in-person","Distrustful of digital"], conf:"green" },
+    revolving:     { score:4, quote:"I've delayed deciding on a revolving line for two years now. I know I might need it but committing to it feels like admitting financial weakness.", pros:["Could help with cash flow"], cons:["Psychological resistance","Distrustful"], conf:"amber" },
+    bnpl:          { score:3, quote:"I don't really shop online much. And paying in instalments for small purchases feels unnecessary — if I can't afford it now, I'll wait.", pros:[], cons:["Low digital usage","Prefers to wait"], conf:"amber" },
+    car:           { score:7, quote:"My car is getting old and I'll need to replace it soon. A car loan with a fixed payment I can plan around — that's something I could commit to.", pros:["Real near-term need","Fixed repayment clarity"], cons:["Needs personal advice"], conf:"green" },
+    renovation:    { score:8, quote:"I own my flat and I've been putting off fixing the bathroom for years. A renovation loan through my branch, with a real advisor explaining it, I'd seriously consider.", pros:["Homeowner","Real need","Values advice"], cons:["Slow to decide"], conf:"green" },
+    consolidation: { score:5, quote:"Combining my debts is something I've thought about. But I'd need someone to sit down with me and walk me through it. I won't do it online.", pros:["Appeals intellectually"], cons:["Needs hand-holding","Slow to act"], conf:"amber" },
+  },
+  l4: {
+    personal:      { score:8, quote:"With two kids and fixed monthly costs, a personal loan for an unexpected expense is a relief valve. I need to know there's a plan B.", pros:["Peace of mind","Family buffer","Familiar"], cons:["Many fixed costs"], conf:"green" },
+    revolving:     { score:7, quote:"Knowing I have a €2,000 credit line sitting there gives me real peace of mind. I don't plan to use it — but knowing it's there changes everything.", pros:["Safety net","Psychological comfort"], cons:["Risk of reliance"], conf:"green" },
+    bnpl:          { score:6, quote:"We used BNPL for the kids' back-to-school shopping last September. It spread the cost without interest. Simple and helpful.", pros:["Family shopping","Interest-free"], cons:["Multiple small commitments"], conf:"green" },
+    car:           { score:7, quote:"We're a two-kid family in the suburbs. Having a reliable family car is non-negotiable. We'd finance a replacement without hesitation.", pros:["Family need","Non-negotiable"], cons:["Budget pressure"], conf:"green" },
+    renovation:    { score:6, quote:"We rent but we might buy in the next few years. Renovation loans are on the horizon, not today.", pros:["Future homeowner intent"], cons:["Currently renting"], conf:"amber" },
+    consolidation: { score:4, quote:"We have a mortgage and a car loan. Consolidating might simplify things but I'm worried about extending the repayment period and paying more overall.", pros:["Simplification appeal"], cons:["Total cost worry"], conf:"amber" },
+  },
+  h0: {
+    personal:      { score:6, quote:"I earn reasonably and like my freedom. If I take a loan, it's for something enjoyable — a trip, a new camera, experiences. Not out of necessity.", pros:["Experience-driven use","Financially independent"], cons:["Lives above salary"], conf:"green" },
+    revolving:     { score:7, quote:"A revolving line is like a financial cushion for the month-end gaps. I'm honest with myself — I spend freely and sometimes need a bridge.", pros:["Month-end gaps","Already uses FIDI"], cons:["Risk of chronic reliance"], conf:"green" },
+    bnpl:          { score:5, quote:"I've used BNPL for concert tickets and gallery memberships. It's convenient. But I'm careful — I don't want to lose track of what I owe.", pros:["Leisure use case"], cons:["Tracking concern"], conf:"amber" },
+    car:           { score:4, quote:"I live in the city and don't own a car. A car loan is just not part of my life right now.", pros:[], cons:["Urban lifestyle","Car-free"], conf:"green" },
+    renovation:    { score:3, quote:"I rent a city apartment. Renovation loans are for homeowners. Not relevant to me.", pros:[], cons:["Renter"], conf:"green" },
+    consolidation: { score:6, quote:"I have a credit card and a FIDI line. Merging them into one payment would simplify my month-end — if the rate is right.", pros:["Simplification","Rate-sensitive"], cons:["Not many debts"], conf:"amber" },
+  },
+  h1: {
+    personal:      { score:9, quote:"When the boiler broke last winter, a personal loan was the only solution. Knowing I can access one quickly without drama — that's what I need from my bank.", pros:["Emergency use","Family support","High trust in bank"], cons:[], conf:"green" },
+    revolving:     { score:8, quote:"I keep a revolving credit line active. I rarely use it fully but it's the difference between a stressful month and a manageable one.", pros:["Peace of mind","Regular user","Family stability"], cons:["Discipline needed"], conf:"green" },
+    bnpl:          { score:6, quote:"My kids asked for BNPL for back-to-school equipment. I agreed — it spreads the cost without interest and the school year is non-negotiable.", pros:["Family expense management"], cons:["Accumulation risk"], conf:"green" },
+    car:           { score:8, quote:"Two kids means you need a reliable car. I financed our current one and would do it again — fixed repayments, no surprises, family sorted.", pros:["Family need","Trusted product","Repeat customer"], cons:[], conf:"green" },
+    renovation:    { score:7, quote:"The kitchen needs work. With a steady income and a trusted bank, a renovation loan over 48 months is something I can plan around.", pros:["Homeowner","Planned need","Planning mentality"], cons:["Multiple commitments"], conf:"green" },
+    consolidation: { score:5, quote:"I have several commitments already. Consolidation sounds appealing in theory but I'm cautious about anything that changes my monthly outgoings.", pros:["Simplification"], cons:["Change-averse","Risk-aware"], conf:"amber" },
+  },
+  h2: {
+    personal:      { score:7, quote:"I took a personal loan to move into my first flat and buy furniture. Fixed payments, managed through the app — exactly how I like things.", pros:["Life transition use case","App-native","Tech-savvy"], cons:["Rough with money occasionally"], conf:"green" },
+    revolving:     { score:8, quote:"Having a revolving line on my phone means I can handle any surprise. I activated it once for a phone upgrade — it just makes sense for my lifestyle.", pros:["Mobile-first","Already FIDI user","Flexible"], cons:["Occasional misuse"], conf:"green" },
+    bnpl:          { score:9, quote:"BNPL is honestly perfect for me. New phone? Split it 4 ways, no interest. I've done it three times and it's always been smooth on the app.", pros:["Tech purchases","App-native","Zero friction"], cons:[], conf:"green" },
+    car:           { score:4, quote:"I'm 27, I live centrally and use my bike and metro. A car loan is for a different chapter of my life — maybe in 5 years.", pros:["Future consideration"], cons:["Urban","Young","No need now"], conf:"green" },
+    renovation:    { score:2, quote:"I'm renting a studio. Renovation loans are not even on my radar. Maybe when I own something — which feels very far away.", pros:[], cons:["Renter","Young","Not applicable"], conf:"green" },
+    consolidation: { score:3, quote:"I don't have enough debts to consolidate. This feels like a product for people older than me with more complex finances.", pros:[], cons:["Low debt","Young","Not relevant"], conf:"green" },
+  },
+};
+
+let selectedCell = null;
+
+function getColor(score) {
+  if (score >= 7) return 'green';
+  if (score >= 4) return 'amber';
+  return 'red';
+}
+
+function buildTable() {
+  const table = document.getElementById('heatmap');
+  
+  // Header row
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  const corner = document.createElement('th');
+  corner.className = 'corner-cell';
+  corner.textContent = 'Persona / Product';
+  headerRow.appendChild(corner);
+  
+  PRODUCTS.forEach(p => {
+    const th = document.createElement('th');
+    th.className = 'product-header';
+    th.innerHTML = `<span class="product-icon">${p.icon}</span><span class="product-name">${p.name.replace('\n','<br/>')}</span>`;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  // Body
+  const tbody = document.createElement('tbody');
+  PERSONAS.forEach(persona => {
+    const tr = document.createElement('tr');
+    tr.dataset.nps = persona.nps;
+    
+    // Persona header cell
+    const th = document.createElement('th');
+    th.className = 'persona-header';
+    th.innerHTML = `
+      <span class="persona-tag tag-${persona.nps}">${persona.tag}</span>
+      <span class="persona-name">${persona.name}</span>
+      <span class="persona-desc">${persona.desc}</span>
+    `;
+    tr.appendChild(th);
+
+    // Score cells
+    PRODUCTS.forEach(product => {
+      const td = document.createElement('td');
+      td.className = `score-cell ${getColor(DATA[persona.id][product.id].score)}`;
+      const score = DATA[persona.id][product.id].score;
+      const pct = (score / 10 * 100).toFixed(0);
+      td.innerHTML = `
+        <div class="cell-inner">
+          <span class="cell-score">${score}</span>
+          <div class="cell-bar"><div class="cell-bar-fill" style="width:${pct}%"></div></div>
+        </div>`;
+      td.onclick = () => showDetail(persona, product, DATA[persona.id][product.id], td);
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  updateStats();
+}
+
+function showDetail(persona, product, data, cell) {
+  // Deselect previous
+  if (selectedCell) selectedCell.classList.remove('selected');
+  selectedCell = cell;
+  cell.classList.add('selected');
+
+  const panel = document.getElementById('detail-panel');
+  const color = getColor(data.score);
+  const badgeClass = `score-badge-${color}`;
+  const scoreLabel = color === 'green' ? '🟢 High fit' : color === 'amber' ? '🟡 Medium fit' : '🔴 Low fit';
+
+  const prosHtml = data.pros.map(p => `<span class="detail-pill pill-pos">${p}</span>`).join('');
+  const consHtml = data.cons.map(c => `<span class="detail-pill pill-neg">${c}</span>`).join('');
+
+  const confLabel = data.conf === 'green' ? 'Data-backed' : data.conf === 'amber' ? 'Model inference' : 'Extrapolation';
+
+  panel.className = 'detail-panel';
+  panel.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-persona-tag" style="color:var(--${persona.nps === 'low' ? 'red' : 'green'})">${persona.tag} · ${persona.name}</div>
+      <div class="detail-product">${product.icon} ${product.name.replace('\n',' ')}</div>
+      <div class="detail-score-badge ${badgeClass}">${scoreLabel} · ${data.score}/10</div>
+    </div>
+    <div class="detail-body">
+      <div class="detail-section-title">Persona says</div>
+      <div class="detail-quote">"${data.quote}"</div>
+      ${prosHtml ? `<div class="detail-section-title">Why they would take it</div><div class="detail-pill-group">${prosHtml}</div>` : ''}
+      ${consHtml ? `<div class="detail-section-title">What holds them back</div><div class="detail-pill-group">${consHtml}</div>` : ''}
+      <div class="detail-section-title">Confidence</div>
+      <div class="confidence-row">
+        <div class="conf-dot conf-${data.conf}"></div>
+        <span style="color:var(--text);font-size:12px">${confLabel}</span>
+      </div>
+    </div>`;
+}
+
+function filterPersonas(type, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#heatmap tbody tr').forEach(tr => {
+    if (type === 'all') tr.style.display = '';
+    else tr.style.display = tr.dataset.nps === type ? '' : 'none';
+  });
+}
+
+function updateStats() {
+  let green = 0, red = 0;
+  PERSONAS.forEach(p => PRODUCTS.forEach(prod => {
+    const s = DATA[p.id][prod.id].score;
+    if (s >= 7) green++;
+    if (s <= 3) red++;
+  }));
+  document.getElementById('green-count').textContent = green;
+  document.getElementById('red-count').textContent = red;
+}
+
+buildTable();
+</script>
+</body>
+</html>
